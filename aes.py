@@ -151,6 +151,7 @@ def main():
 		print '[3] CFB - Modo de cifrado con retroalimentación'
 		print '[4] OFB - Modo de retroalimentación de salida'
 		print '[5] CTR - Modo de contador'
+		print '[6]  *  - Modo de bloque desconocido'
 		print
 		modo = raw_input('SELECCIONE EL MODO DE CIFRADO POR BLOQUES: ')
 		print color.ENDC
@@ -165,9 +166,12 @@ def main():
 			print color.OKGREEN + aes.decrypt(5,mensaje) + color.ENDC
 		elif modo == '5':
 			print color.OKGREEN + aes.decrypt(6,mensaje) + color.ENDC				
-		else:
-			main()
-		print		
+		elif modo == '6':
+			print color.OKGREEN + 'BCE: ' + aes.decrypt(1,mensaje) + color.ENDC				
+			print color.OKGREEN + 'CBC: ' + aes.decrypt(2,mensaje) + color.ENDC				
+			print color.OKGREEN + 'CFB: ' + aes.decrypt(3,mensaje) + color.ENDC				
+			print color.OKGREEN + 'OFB: ' + aes.decrypt(5,mensaje) + color.ENDC				
+			print color.OKGREEN + 'CTR: ' + aes.decrypt(6,mensaje) + color.ENDC				
 	else:
 		main()
 
