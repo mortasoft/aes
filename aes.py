@@ -92,11 +92,16 @@ def main():
     print('+-----------------------------------------------+')
     print(color.ENDC)
 
-    # Se ingresa el mensaje en texto plano o cifrado
-    print(color.OKYELLOW + 'DIGITE EL MENSAJE (TEXTO PLANO O CIFRADO)' + color.ENDC)
-    mensaje = input()
-    mensaje = remove_accents(mensaje)
-    print()
+	# Se ingresa el mensaje en texto plano o cifrado
+	print color.OKYELLOW + 'DIGITE EL MENSAJE (TEXTO PLANO O CIFRADO)' + color.ENDC
+	mensaje = unicode(raw_input(),"utf-8")
+	mensaje = remove_accents(mensaje)	
+	print
+	
+	# Se ingresa la llave
+	print color.OKYELLOW + 'DIGITE LA LLAVE (KEY)' + color.ENDC
+	llave = raw_input()
+	key = hashlib.sha256(llave).hexdigest()[:BS]
 
     # Se el tamaño la llave 16 = 128 bits, 24 = 192 bits, 32 = 256 bits
     #print color.OKYELLOW + 'DIGITE EL TAMAÑO DE LA LLAVE [16 = 128 bits, 24 = 192 bits, 32 = 256 bits]' + color.ENDC
