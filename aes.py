@@ -96,16 +96,10 @@ def main():
 	mensaje = remove_accents(mensaje)	
 	print
 	
-	# Se el tamaño la llave 16 = 128 bits, 24 = 192 bits, 32 = 256 bits 
-	#print color.OKYELLOW + 'DIGITE EL TAMAÑO DE LA LLAVE [16 = 128 bits, 24 = 192 bits, 32 = 256 bits]' + color.ENDC
-	#key_size = raw_input()
-	#print
-	
 	# Se ingresa la llave
 	print color.OKYELLOW + 'DIGITE LA LLAVE (KEY)' + color.ENDC
 	llave = raw_input()
 	key = hashlib.sha256(llave).hexdigest()[:BS]
-	#key = hashlib.sha256(llave).hexdigest()[:int(key_size)]
 
 	## Se crea el objeto AES
 	aes = AESCipher(key)
