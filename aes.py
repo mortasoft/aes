@@ -44,37 +44,51 @@ class color:
 
 # BlockSize
 BS = 16
+# Salt size for PBKDF2
+SALT_SIZE = 16
+# PBKDF2 iterations
+PBKDF2_ITERATIONS = 600000
 
 pad = lambda s: s + (BS - len(s) % BS) * bytes([BS - len(s) % BS])
 unpad = lambda s : s[:-ord(s[len(s)-1:])]
 
 class AESCipher:
-    def __init__(self, key):
-        self.key = key
+    def __init__(self, password):
+        if isinstance(password, str):
+            password = password.encode('utf-8')
+        self.password = password
+
+    def _derive_key(self, salt):
+        return hashlib.pbkdf2_hmac('sha256', self.password, salt, PBKDF2_ITERATIONS, dklen=BS)
 
     def encrypt(self, mode, plaintext):
         if isinstance(plaintext, str):
             plaintext = plaintext.encode('utf-8')
         plaintext = pad(plaintext)
+        salt = Random.new().read(SALT_SIZE)
+        key = self._derive_key(salt)
         iv = Random.new().read(AES.block_size)
         if mode == 6:
             ctr = Counter.new(128)
-            ciphertext = AES.new(self.key, mode, counter=ctr)
+            cipher = AES.new(key, mode, counter=ctr)
         else:
-            ciphertext = AES.new(self.key, mode, iv)
-        return base64.urlsafe_b64encode(iv + ciphertext.encrypt(plaintext))
+            cipher = AES.new(key, mode, iv)
+        return base64.urlsafe_b64encode(salt + iv + cipher.encrypt(plaintext))
 
     def decrypt(self, mode, ciphertext):
         if isinstance(ciphertext, str):
             ciphertext = ciphertext.encode('utf-8')
-        ciphertext = base64.urlsafe_b64decode(ciphertext)
-        iv = ciphertext[:BS]
+        decoded = base64.urlsafe_b64decode(ciphertext)
+        salt = decoded[:SALT_SIZE]
+        iv = decoded[SALT_SIZE:SALT_SIZE+BS]
+        encrypted_data = decoded[SALT_SIZE+BS:]
+        key = self._derive_key(salt)
         if mode == 6:
             ctr = Counter.new(128)
-            cipher = AES.new(self.key, mode, counter=ctr)
+            cipher = AES.new(key, mode, counter=ctr)
         else:
-            cipher = AES.new(self.key, mode, iv)
-        return unpad(cipher.decrypt(ciphertext[BS:]))
+            cipher = AES.new(key, mode, iv)
+        return unpad(cipher.decrypt(encrypted_data))
 
 def remove_accents(input_str):
     input_str = input_str.replace("\u2018", "\"").replace("\u2019", "\"").replace("\u201c","\"").replace("\u201d", "\"")
@@ -92,30 +106,18 @@ def main():
     print('+-----------------------------------------------+')
     print(color.ENDC)
 
-	# Se ingresa el mensaje en texto plano o cifrado
-	print color.OKYELLOW + 'DIGITE EL MENSAJE (TEXTO PLANO O CIFRADO)' + color.ENDC
-	mensaje = unicode(raw_input(),"utf-8")
-	mensaje = remove_accents(mensaje)	
-	print
-	
-	# Se ingresa la llave
-	print color.OKYELLOW + 'DIGITE LA LLAVE (KEY)' + color.ENDC
-	llave = raw_input()
-	key = hashlib.sha256(llave).hexdigest()[:BS]
-
-    # Se el tamaño la llave 16 = 128 bits, 24 = 192 bits, 32 = 256 bits
-    #print color.OKYELLOW + 'DIGITE EL TAMAÑO DE LA LLAVE [16 = 128 bits, 24 = 192 bits, 32 = 256 bits]' + color.ENDC
-    #key_size = raw_input()
-    #print
+    # Se ingresa el mensaje en texto plano o cifrado
+    print(color.OKYELLOW + 'DIGITE EL MENSAJE (TEXTO PLANO O CIFRADO)' + color.ENDC)
+    mensaje = input()
+    mensaje = remove_accents(mensaje)
+    print()
 
     # Se ingresa la llave
     print(color.OKYELLOW + 'DIGITE LA LLAVE (KEY)' + color.ENDC)
     llave = input()
-    key = hashlib.sha256(llave.encode()).hexdigest()[:BS].encode('utf-8')
-    #key = hashlib.sha256(llave).hexdigest()[:int(key_size)]
 
     ## Se crea el objeto AES
-    aes = AESCipher(key)
+    aes = AESCipher(llave)
 
     # Pregunta si se desea encriptar o desencriptar el mensaje
     print(color.OKYELLOW)
@@ -133,24 +135,27 @@ def main():
         modo = input('SELECCIONE EL MODO DE CIFRADO POR BLOQUES: ')
         print(color.ENDC)
         print(color.BOLD + 'MENSAJE ENCRIPTADO' + color.ENDC)
-        if modo == '1':
-            print(color.OKGREEN + aes.encrypt(1,mensaje).decode('utf-8') + color.ENDC)
-        elif modo == '2':
-            print(color.OKGREEN + aes.encrypt(2,mensaje).decode('utf-8') + color.ENDC)
-        elif modo == '3':
-            print(color.OKGREEN + aes.encrypt(3,mensaje).decode('utf-8') + color.ENDC)
-        elif modo == '4':
-            print(color.OKGREEN + aes.encrypt(5,mensaje).decode('utf-8') + color.ENDC)
-        elif modo == '5':
-            print(color.OKGREEN + aes.encrypt(6,mensaje).decode('utf-8') + color.ENDC)
-        elif modo == '6':
-            print(color.OKGREEN + 'BCE: ' + aes.encrypt(1,mensaje).decode('utf-8') + color.ENDC)
-            print(color.OKGREEN + 'CBC: ' + aes.encrypt(2,mensaje).decode('utf-8') + color.ENDC)
-            print(color.OKGREEN + 'CFB: ' + aes.encrypt(3,mensaje).decode('utf-8') + color.ENDC)
-            print(color.OKGREEN + 'OFB: ' + aes.encrypt(5,mensaje).decode('utf-8') + color.ENDC)
-            print(color.OKGREEN + 'CTR: ' + aes.encrypt(6,mensaje).decode('utf-8') + color.ENDC)
-        else:
-            main()
+        try:
+            if modo == '1':
+                print(color.OKGREEN + aes.encrypt(1,mensaje).decode('utf-8') + color.ENDC)
+            elif modo == '2':
+                print(color.OKGREEN + aes.encrypt(2,mensaje).decode('utf-8') + color.ENDC)
+            elif modo == '3':
+                print(color.OKGREEN + aes.encrypt(3,mensaje).decode('utf-8') + color.ENDC)
+            elif modo == '4':
+                print(color.OKGREEN + aes.encrypt(5,mensaje).decode('utf-8') + color.ENDC)
+            elif modo == '5':
+                print(color.OKGREEN + aes.encrypt(6,mensaje).decode('utf-8') + color.ENDC)
+            elif modo == '6':
+                print(color.OKGREEN + 'BCE: ' + aes.encrypt(1,mensaje).decode('utf-8') + color.ENDC)
+                print(color.OKGREEN + 'CBC: ' + aes.encrypt(2,mensaje).decode('utf-8') + color.ENDC)
+                print(color.OKGREEN + 'CFB: ' + aes.encrypt(3,mensaje).decode('utf-8') + color.ENDC)
+                print(color.OKGREEN + 'OFB: ' + aes.encrypt(5,mensaje).decode('utf-8') + color.ENDC)
+                print(color.OKGREEN + 'CTR: ' + aes.encrypt(6,mensaje).decode('utf-8') + color.ENDC)
+            else:
+                main()
+        except Exception as e:
+            print(color.FAIL + 'Error al encriptar: ' + str(e) + color.ENDC)
         print()
     elif opcion == 'd' or opcion == 'D':
         print(color.OKYELLOW + 'CIFRADO POR BLOQUES')
@@ -164,22 +169,25 @@ def main():
         modo = input('SELECCIONE EL MODO DE CIFRADO POR BLOQUES: ')
         print(color.ENDC)
         print(color.BOLD + 'MENSAJE DESENCRIPTADO' + color.ENDC)
-        if modo == '1':
-            print(color.OKGREEN + aes.decrypt(1,mensaje).decode('utf-8') + color.ENDC)
-        elif modo == '2':
-            print(color.OKGREEN + aes.decrypt(2,mensaje).decode('utf-8') + color.ENDC)
-        elif modo == '3':
-            print(color.OKGREEN + aes.decrypt(3,mensaje).decode('utf-8') + color.ENDC)
-        elif modo == '4':
-            print(color.OKGREEN + aes.decrypt(5,mensaje).decode('utf-8') + color.ENDC)
-        elif modo == '5':
-            print(color.OKGREEN + aes.decrypt(6,mensaje).decode('utf-8') + color.ENDC)
-        elif modo == '6':
-            print(color.OKGREEN + 'BCE: ' + aes.decrypt(1,mensaje).decode('utf-8') + color.ENDC)
-            print(color.OKGREEN + 'CBC: ' + aes.decrypt(2,mensaje).decode('utf-8') + color.ENDC)
-            print(color.OKGREEN + 'CFB: ' + aes.decrypt(3,mensaje).decode('utf-8') + color.ENDC)
-            print(color.OKGREEN + 'OFB: ' + aes.decrypt(5,mensaje).decode('utf-8') + color.ENDC)
-            print(color.OKGREEN + 'CTR: ' + aes.decrypt(6,mensaje).decode('utf-8') + color.ENDC)
+        try:
+            if modo == '1':
+                print(color.OKGREEN + aes.decrypt(1,mensaje).decode('utf-8') + color.ENDC)
+            elif modo == '2':
+                print(color.OKGREEN + aes.decrypt(2,mensaje).decode('utf-8') + color.ENDC)
+            elif modo == '3':
+                print(color.OKGREEN + aes.decrypt(3,mensaje).decode('utf-8') + color.ENDC)
+            elif modo == '4':
+                print(color.OKGREEN + aes.decrypt(5,mensaje).decode('utf-8') + color.ENDC)
+            elif modo == '5':
+                print(color.OKGREEN + aes.decrypt(6,mensaje).decode('utf-8') + color.ENDC)
+            elif modo == '6':
+                print(color.OKGREEN + 'BCE: ' + aes.decrypt(1,mensaje).decode('utf-8') + color.ENDC)
+                print(color.OKGREEN + 'CBC: ' + aes.decrypt(2,mensaje).decode('utf-8') + color.ENDC)
+                print(color.OKGREEN + 'CFB: ' + aes.decrypt(3,mensaje).decode('utf-8') + color.ENDC)
+                print(color.OKGREEN + 'OFB: ' + aes.decrypt(5,mensaje).decode('utf-8') + color.ENDC)
+                print(color.OKGREEN + 'CTR: ' + aes.decrypt(6,mensaje).decode('utf-8') + color.ENDC)
+        except Exception as e:
+            print(color.FAIL + 'Error al desencriptar: ' + str(e) + color.ENDC)
     else:
         main()
 
